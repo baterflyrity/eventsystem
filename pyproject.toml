@@ -1,0 +1,19 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "eventsystem"
+authors = [{ name = "baterflyrity", email = "baterflyrity@yandex.ru" }]
+dynamic = ["version", "description"]
+readme = "README.md"
+classifiers = ["Operating System :: OS Independent"]
+keywords = ["pymitter", "event", "system"]
+dependencies = [
+    "pymitter >=0.4.0"
+]
+
+[project.urls]
+Home = "https://pypi.org/project/eventsystem"
+Sources = "https://github.com/baterflyrity/eventsystem"
+Bugtracker = "https://github.com/baterflyrity/eventsystem/issues"
