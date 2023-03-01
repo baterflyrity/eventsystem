@@ -3,6 +3,7 @@ from __future__ import annotations
 
 __version__ = "1.1.0"
 
+from asyncio import get_running_loop, Task
 from typing import Callable, overload
 
 from pymitter import EventEmitter
@@ -50,7 +51,7 @@ class Event:
 		"""
 		...
 
-	def trigger(self, *args, **kwargs) -> asyncio.Task | None:
+	def trigger(self, *args, **kwargs) -> Task | None:
 		"""
 		Fire the event. All arguments are passed to each handler.
 
@@ -109,10 +110,10 @@ class EventProxy(Event):
 	def get_emitter(self) -> EventEmitter | None:
 		return self._emitter
 
-	def trigger(self, *args, **kwargs) -> asyncio.Task | None:
+	def trigger(self, *args, **kwargs) -> Task | None:
 		if self._emitter:
 			try:
-				loop = asyncio.get_running_loop()
+				loop = get_running_loop()
 				return loop.create_task(self._emitter.emit_async(self.name, *args, **kwargs), name=self.name)
 			except RuntimeError:
 				self._emitter.emit(self.name, *args, **kwargs)
@@ -177,7 +178,7 @@ def event(arg):
 	dispatcher = EventDispatcher(arg) if is_parametrized else None
 
 	def event_decorator(handler_descriptor: EventHandler) -> Event:
-		event_proxy = EventProxy(handler_descriptor.__name__)
+		event_proxy = EventProxy(handler_descriptor.__qualname__)
 		return event_proxy._create_proxy(dispatcher)
 
 	if is_parametrized:
@@ -185,7 +186,7 @@ def event(arg):
 	return event_decorator(arg)
 
 
-if __name__ == '__main__2':
+if __name__ == '__main__':
 	# Test some cases.
 	import inspect
 
@@ -306,8 +307,8 @@ if __name__ == '__main__2':
 		not_dispatcher.event5.trigger(f'Event trigger {i}')
 		not_dispatcher.event6.trigger(f'Event trigger {i}')
 
-if __name__ == '__main__':
-	import asyncio
+if __name__ == '__main__2':
+	from asyncio import sleep as asyncio_sleep, run
 	import inspect, time
 
 
@@ -342,7 +343,7 @@ if __name__ == '__main__':
 
 		simple_event.trigger('Async trigger from async loop.')
 		print(time.time(), '►', 'Waiting for 3 seconds...')
-		await asyncio.sleep(3)
+		await asyncio_sleep(3)
 		print(time.time(), '►', 'Waiting for event is fully handled...')
 		await simple_event.trigger('Sync trigger from async loop.')
 		print(time.time(), '►', 'End.')
@@ -350,4 +351,4 @@ if __name__ == '__main__':
 
 	simple_event.trigger('Sync trigger from sync loop.')
 	print(time.time(), '►', 'Starting async loop...')
-	asyncio.run(main())
+	run(main())
