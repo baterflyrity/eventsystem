@@ -1,7 +1,7 @@
 """Convenient Event System"""
 from __future__ import annotations
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 from typing import Callable, overload
 
@@ -50,11 +50,13 @@ class Event:
 		"""
 		...
 
-	def trigger(self, *args, **kwargs):
+	def trigger(self, *args, **kwargs) -> asyncio.Task | None:
 		"""
 		Fire the event. All arguments are passed to each handler.
 
 		Signature must be the same as for handler descriptor.
+
+		:return: Triggering call can be awaited in asyncio loop to wait until all handlers are processed.
 		"""
 		...
 
@@ -107,9 +109,13 @@ class EventProxy(Event):
 	def get_emitter(self) -> EventEmitter | None:
 		return self._emitter
 
-	def trigger(self, *args, **kwargs):
+	def trigger(self, *args, **kwargs) -> asyncio.Task | None:
 		if self._emitter:
-			self._emitter.emit(self.name, *args, **kwargs)
+			try:
+				loop = asyncio.get_running_loop()
+				return loop.create_task(self._emitter.emit_async(self.name, *args, **kwargs), name=self.name)
+			except RuntimeError:
+				self._emitter.emit(self.name, *args, **kwargs)
 
 	def _create_proxy(self, dispatcher: EventDispatcher | None = None) -> EventProxy:
 		def proxy(*args: EventHandler | int):
@@ -179,7 +185,7 @@ def event(arg):
 	return event_decorator(arg)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__2':
 	# Test some cases.
 	import inspect
 
@@ -299,3 +305,49 @@ if __name__ == '__main__':
 		event4.trigger(f'Event trigger {i}')
 		not_dispatcher.event5.trigger(f'Event trigger {i}')
 		not_dispatcher.event6.trigger(f'Event trigger {i}')
+
+if __name__ == '__main__':
+	import asyncio
+	import inspect, time
+
+
+	def callback(*args, **kwargs):
+		print(time.time(), inspect.getouterframes(inspect.currentframe())[1].function, args, kwargs)
+
+
+	@event
+	def simple_event(x):
+		...
+
+
+	@simple_event
+	def sync_cb_sync_loop(x):
+		callback(x)
+
+
+	@simple_event
+	async def async_cb_sync_loop(x):
+		callback(x)
+
+
+	async def main():
+
+		@simple_event
+		def sync_cb_async_loop(x):
+			callback(x)
+
+		@simple_event
+		async def async_cb_async_loop(x):
+			callback(x)
+
+		simple_event.trigger('Async trigger from async loop.')
+		print(time.time(), '►', 'Waiting for 3 seconds...')
+		await asyncio.sleep(3)
+		print(time.time(), '►', 'Waiting for event is fully handled...')
+		await simple_event.trigger('Sync trigger from async loop.')
+		print(time.time(), '►', 'End.')
+
+
+	simple_event.trigger('Sync trigger from sync loop.')
+	print(time.time(), '►', 'Starting async loop...')
+	asyncio.run(main())
