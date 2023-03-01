@@ -2,7 +2,7 @@
 
 Create, subscribe and fire events with one line of code. Unlike alternative packages this one provides static typed predefined events with documented signature of event handlers.
 
-**Both ordinary and async event handlers are supported.**
+**Both ordinary and async event handlers are supported. Both ordinary and async events are supported. Any of ordinary, async and awaited async event triggering is supported.**
 
 # Usage examples
 
@@ -266,6 +266,24 @@ Alternatively considering `Mouse` class example:
 mouse.click.trigger(12, 34)
 ```
 
+### Triggering events from async loop
+
+When event is triggered from async loop the method returns loop task of handlers dispatching. One can optionally await it to pause current async thread until dispatching will be done.
+
+Consider example above running within asyncio loop:
+
+```python
+async def main():
+	click.trigger(12, 34) # Schedule handlers execution and go to the next line without waiting.
+	...
+	await click.trigger(12, 34) # Wait until all handlers process before next line execution.
+	...
+	
+asyncio.run(main())
+```
+
+*It is worth nothing that some IDEs, linters or static type checkers can warn about not awaited triggering. This is not a problem and depends only on demanded triggering behaviour.*
+
 # Reference
 
 **eventsystem.event(...)**
@@ -300,7 +318,7 @@ Methods:
 
 * **get_emitter() → EventEmitter | None** - get bound event emitter. In most cases, event will have event emitter bound. But in rare cases it can be `None` when no handler descriptor has been decorated yet.
 
-* **trigger(...) → None** - fire the event. All arguments are passed to each handler. Signature must match handler descriptor.
+* **trigger(...) → asyncio.Task| None** - fire the event. All arguments are passed to each handler. Signature must match handler descriptor. If event is triggered being in asyncio loop the method returns corresponding Task which can be optionally awaited to pause until all handlers are processed.
 
 **eventsystem.emitter**
 
